@@ -18,19 +18,23 @@
 package org.apache.shardingsphere.authority.provider.schema.model.privilege;
 
 import java.util.Collection;
-import java.util.Set;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.shardingsphere.authority.model.AccessSubject;
 import org.apache.shardingsphere.authority.model.PrivilegeType;
 import org.apache.shardingsphere.authority.model.ShardingSpherePrivileges;
-import org.apache.shardingsphere.authority.provider.natived.model.subject.SchemaAccessSubject;
+import org.apache.shardingsphere.authority.provider.schema.model.subject.SchemaAccessSubject;
 
 import lombok.AllArgsConstructor;
 
-@AllArgsConstructor
+
 public class SchemaPrivilegesPermittedShardingSpherePrivileges implements ShardingSpherePrivileges {
 
-    private final Set<String> schemas;
+    private final Map<SchemaAccessSubject, Collection<PrivilegeType>> privileges = new ConcurrentHashMap<>();
 
     @Override
     public void setSuperPrivilege() {
@@ -38,19 +42,40 @@ public class SchemaPrivilegesPermittedShardingSpherePrivileges implements Shardi
     }
 
     @Override
-    public boolean hasPrivileges(final String schema) {
-        return schemas.contains(schema);
-    }
-
-    @Override
-    public boolean hasPrivileges(final Collection<PrivilegeType> privileges) {
-        return true;
-    }
-
-    @Override
-    public boolean hasPrivileges(final AccessSubject accessSubject, final Collection<PrivilegeType> privileges) {
+    public void setPrivileges(AccessSubject accessSubject, Collection<PrivilegeType> privileges) {
         if (accessSubject instanceof SchemaAccessSubject) {
-            return hasPrivileges(((SchemaAccessSubject) accessSubject).getSchema());
+            this.privileges.put((SchemaAccessSubject) accessSubject, privileges);
+        }
+    }
+
+    /**
+     * Has privileges.
+     *
+     * @param schema
+     * @return
+     */
+    @Override
+    public boolean hasPrivileges(String schema) {
+        Collection<PrivilegeType> privilegeTypes = this.privileges.get(new SchemaAccessSubject(schema));
+        if (Objects.nonNull(privilegeTypes) && !privilegeTypes.isEmpty()) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Has privileges.
+     *
+     * @param schema
+     * @param table
+     * @param privileges
+     * @return
+     */
+    @Override
+    public boolean hasPrivileges(String schema, String table, Collection<PrivilegeType> privileges) {
+        Collection<PrivilegeType> privilegeTypes = this.privileges.get(new SchemaAccessSubject(schema));
+        if (Objects.nonNull(privilegeTypes) && !privilegeTypes.isEmpty()) {
+            return privilegeTypes.containsAll(privileges);
         }
         return false;
     }

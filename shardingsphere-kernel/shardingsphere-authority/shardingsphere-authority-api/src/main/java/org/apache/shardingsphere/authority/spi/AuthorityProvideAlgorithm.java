@@ -31,15 +31,16 @@ import java.util.Optional;
  * Authority provide algorithm.
 */
 public interface AuthorityProvideAlgorithm extends ShardingSphereAlgorithm {
-    
+
     /**
      * Initialize authority.
-     * 
-     * @param mataDataMap mata data map
+     *
+     * @param permitted users privileges permitted
+     * @param mataDataMap mete data map
      * @param users users
      */
-    void init(Map<String, ShardingSphereMetaData> mataDataMap, Collection<ShardingSphereUser> users);
-    
+    void init(Collection<Map<String, Object>> permitted, Map<String, ShardingSphereMetaData> mataDataMap, Collection<ShardingSphereUser> users);
+
     /**
      * Refresh authority.
      *

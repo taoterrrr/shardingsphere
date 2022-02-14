@@ -19,11 +19,13 @@ package org.apache.shardingsphere.infra.executor.check;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
 import org.apache.shardingsphere.infra.metadata.ShardingSphereMetaData;
 import org.apache.shardingsphere.infra.metadata.user.Grantee;
 import org.apache.shardingsphere.infra.rule.ShardingSphereRule;
 import org.apache.shardingsphere.spi.ShardingSphereServiceLoader;
 import org.apache.shardingsphere.spi.ordered.OrderedSPIRegistry;
+import org.apache.shardingsphere.sql.parser.sql.common.segment.generic.PrivilegeTypeEnum;
 import org.apache.shardingsphere.sql.parser.sql.common.statement.SQLStatement;
 
 import java.util.Collection;
@@ -60,11 +62,15 @@ public final class SQLCheckEngine {
         }
         return true;
     }
+
+    public static boolean check(final String schemaName, final String tableName, final Grantee user) {
+        return true;
+    }
     
     /**
      * Check SQL.
      * 
-     * @param sqlStatement SQL statement
+     * @param sqlStatementContext SQL statement context
      * @param parameters SQL parameters
      * @param rules rules
      * @param currentSchema current schema
@@ -72,10 +78,11 @@ public final class SQLCheckEngine {
      * @param grantee grantee
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public static void check(final SQLStatement sqlStatement, final List<Object> parameters, final Collection<ShardingSphereRule> rules, 
+    public static void check(final SQLStatementContext<?> sqlStatementContext, final List<Object> parameters,
+                             final Collection<ShardingSphereRule> rules,
                              final String currentSchema, final Map<String, ShardingSphereMetaData> metaDataMap, final Grantee grantee) {
         for (Entry<ShardingSphereRule, SQLChecker> entry : OrderedSPIRegistry.getRegisteredServices(SQLChecker.class, rules).entrySet()) {
-            SQLCheckResult checkResult = entry.getValue().check(sqlStatement, parameters, grantee, currentSchema, metaDataMap, entry.getKey());
+            SQLCheckResult checkResult = entry.getValue().check(sqlStatementContext, parameters, grantee, currentSchema, metaDataMap, entry.getKey());
             if (!checkResult.isPassed()) {
                 throw new SQLCheckException(checkResult.getErrorMessage());
             }

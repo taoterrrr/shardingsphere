@@ -17,15 +17,14 @@
 
 package org.apache.shardingsphere.authority.rule.builder;
 
+import org.apache.shardingsphere.authority.config.AuthorityProviderAlgorithmConfiguration;
 import org.apache.shardingsphere.authority.config.AuthorityRuleConfiguration;
 import org.apache.shardingsphere.authority.constant.AuthorityOrder;
 import org.apache.shardingsphere.infra.config.algorithm.ShardingSphereAlgorithmConfiguration;
 import org.apache.shardingsphere.infra.metadata.user.ShardingSphereUser;
 import org.apache.shardingsphere.infra.rule.builder.global.DefaultGlobalRuleConfigurationBuilder;
 
-import java.util.Collection;
-import java.util.LinkedHashSet;
-import java.util.Properties;
+import java.util.*;
 
 /**
  * Default authority rule configuration builder.
@@ -34,13 +33,25 @@ public final class DefaultAuthorityRuleConfigurationBuilder implements DefaultGl
     
     @Override
     public AuthorityRuleConfiguration build() {
-        return new AuthorityRuleConfiguration(createDefaultUsers(), new ShardingSphereAlgorithmConfiguration("ALL_PRIVILEGES_PERMITTED", new Properties()));
+
+        return new AuthorityRuleConfiguration(createDefaultUsers(),
+                Collections.singletonList(new AuthorityProviderAlgorithmConfiguration("ALL_PRIVILEGES_PERMITTED", createDefaultRows(),
+                                new Properties())
+                        ));
     }
     
     private Collection<ShardingSphereUser> createDefaultUsers() {
         Collection<ShardingSphereUser> result = new LinkedHashSet<>();
         result.add(new ShardingSphereUser(DefaultUser.USER_NAME, DefaultUser.USER_PASSWORD, DefaultUser.USER_HOSTNAME));
         return result;
+    }
+
+    private Collection<Map<String, Object>> createDefaultRows() {
+        Collection<Map<String, Object>> rows = new LinkedHashSet<>();
+        HashMap<String, Object> defaultRow = new HashMap<>();
+        defaultRow.put("user", String.format(DefaultUser.USER_NAME, "@", DefaultUser.USER_HOSTNAME));
+        rows.add(defaultRow);
+        return rows;
     }
     
     @Override

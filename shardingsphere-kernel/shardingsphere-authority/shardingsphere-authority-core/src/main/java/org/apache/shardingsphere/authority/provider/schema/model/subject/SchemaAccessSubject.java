@@ -15,11 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.shardingsphere.authority.provider.natived.model.subject;
+package org.apache.shardingsphere.authority.provider.schema.model.subject;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.apache.shardingsphere.authority.model.AccessSubject;
+import org.apache.shardingsphere.infra.metadata.user.Grantee;
+
+import java.util.Objects;
 
 /**
  * Schema access subject.
@@ -29,4 +32,18 @@ import org.apache.shardingsphere.authority.model.AccessSubject;
 public final class SchemaAccessSubject implements AccessSubject {
     
     private final String schema;
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof SchemaAccessSubject) {
+            SchemaAccessSubject schemaAccessSubject = (SchemaAccessSubject) obj;
+            return schemaAccessSubject.schema.equalsIgnoreCase(schema);
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(schema.toUpperCase());
+    }
 }

@@ -28,29 +28,30 @@ public interface ShardingSpherePrivileges {
      * Set super privilege.
      */
     void setSuperPrivilege();
-    
+
+    /**
+     *  Set privileges
+     *
+     * @param accessSubject
+     * @param privileges
+     */
+    void setPrivileges(AccessSubject accessSubject, Collection<PrivilegeType> privileges);
+
     /**
      * Has privileges.
      *
-     * @param schema schema
-     * @return has privileges or not
+     * @param schema
+     * @return
      */
     boolean hasPrivileges(String schema);
-    
+
     /**
      * Has privileges.
      *
-     * @param privileges privileges
-     * @return has privileges or not
+     * @param schema
+     * @param table
+     * @param privileges
+     * @return
      */
-    boolean hasPrivileges(Collection<PrivilegeType> privileges);
-    
-    /**
-     * Has privileges.
-     *
-     * @param accessSubject access subject
-     * @param privileges privileges
-     * @return has privileges or not
-     */
-    boolean hasPrivileges(AccessSubject accessSubject, Collection<PrivilegeType> privileges);
+    boolean hasPrivileges(String schema, String table, Collection<PrivilegeType> privileges);
 }

@@ -20,90 +20,45 @@ package org.apache.shardingsphere.authority.provider.schema.builder;
 import com.google.common.base.Preconditions;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.apache.shardingsphere.authority.builder.PrivilegeBuilder;
+import org.apache.shardingsphere.authority.model.PrivilegeType;
 import org.apache.shardingsphere.authority.model.ShardingSpherePrivileges;
-import org.apache.shardingsphere.authority.provider.schema.SchemaPrivilegesPermittedAuthorityProviderAlgorithm;
 import org.apache.shardingsphere.authority.provider.schema.model.privilege.SchemaPrivilegesPermittedShardingSpherePrivileges;
+import org.apache.shardingsphere.authority.provider.schema.model.subject.SchemaAccessSubject;
 import org.apache.shardingsphere.infra.metadata.user.Grantee;
 import org.apache.shardingsphere.infra.metadata.user.ShardingSphereUser;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public final class SchemaPrivilegeBuilder {
-    
-    /**
-     * Build privileges.
-     *
-     * @param users users
-     * @param props props
-     * @return privileges
-     */
-    public static Map<ShardingSphereUser, ShardingSpherePrivileges> build(final Collection<ShardingSphereUser> users, final Properties props) {
-        String mappingProp = props.getProperty(SchemaPrivilegesPermittedAuthorityProviderAlgorithm.PROP_USER_SCHEMA_MAPPINGS, "");
-        checkSchemas(mappingProp);
-        return buildPrivileges(users, mappingProp);
+public final class SchemaPrivilegeBuilder extends PrivilegeBuilder {
+
+    public static Map<Grantee, ShardingSpherePrivileges> build(final Collection<ShardingSphereUser> users,
+                                                                          final Collection<Map<String, Object>> permitted) {
+        return buildPrivileges(users, permitted);
     }
     
-    /**
-     * Check schemas.
-     *
-     * @param mappingProp user schema mapping props
-     */
-    private static void checkSchemas(final String mappingProp) {
-        Preconditions.checkArgument(!"".equals(mappingProp), "user-schema-mappings configuration `%s` can not be null", mappingProp);
-        Arrays.stream(mappingProp.split(",")).forEach(each -> Preconditions.checkArgument(0 < each.indexOf("@") && 0 < each.indexOf("="),
-                "user-schema-mappings configuration `%s` is invalid, the configuration format should be like `username@hostname=schema`", each));
-    }
-    
-    private static Map<ShardingSphereUser, ShardingSpherePrivileges> buildPrivileges(final Collection<ShardingSphereUser> users, final String mappingProp) {
-        Map<ShardingSphereUser, Set<String>> userSchemaMappings = convertSchemas(mappingProp);
-        Map<ShardingSphereUser, ShardingSpherePrivileges> result = new HashMap<>(users.size(), 1);
-        users.forEach(each -> result.put(each, new SchemaPrivilegesPermittedShardingSpherePrivileges(getUserSchemas(each, userSchemaMappings))));
-        return result;
-    }
-    
-    /**
-     * Convert schemas.
-     *
-     * @param mappingProp user schema mapping props
-     * @return user schema mapping map
-     */
-    private static Map<ShardingSphereUser, Set<String>> convertSchemas(final String mappingProp) {
-        String[] mappings = mappingProp.split(",");
-        Map<ShardingSphereUser, Set<String>> result = new HashMap<>(mappings.length, 1);
-        Arrays.asList(mappings).forEach(each -> {
-            String[] userSchemaPair = each.trim().split("=");
-            String yamlUser = userSchemaPair[0];
-            String username = yamlUser.substring(0, yamlUser.indexOf("@"));
-            String hostname = yamlUser.substring(yamlUser.indexOf("@") + 1);
-            ShardingSphereUser shardingSphereUser = new ShardingSphereUser(username, "", hostname);
-            Set<String> schemas = result.getOrDefault(shardingSphereUser, new HashSet<>());
-            schemas.add(userSchemaPair[1]);
-            result.putIfAbsent(shardingSphereUser, schemas);
+    private static Map<Grantee, ShardingSpherePrivileges> buildPrivileges(final Collection<ShardingSphereUser> users,
+                                                                    Collection<Map<String, Object>> permitted) {
+        Map<Grantee, ShardingSpherePrivileges> result = new HashMap<>(users.size(), 1);
+        permitted.stream().forEach(map -> {
+            Grantee grantee = getGrantee(map);
+            String schema = (String) map.get("schema");
+            ArrayList<String> privileges = (ArrayList<String>) map.get("privileges");
+            SchemaAccessSubject schemaAccessSubject = new SchemaAccessSubject(schema);
+            Collection<PrivilegeType> privilegeTypes =
+                    privileges.stream().map(each -> getPrivilegeType(each)).collect(Collectors.toSet());
+            ShardingSpherePrivileges shardingSpherePrivileges =
+                    Optional.ofNullable(result.get(grantee)).orElse(new SchemaPrivilegesPermittedShardingSpherePrivileges());
+            shardingSpherePrivileges.setPrivileges(schemaAccessSubject, privilegeTypes);
+            result.put(grantee, shardingSpherePrivileges);
         });
         return result;
     }
+
+
+
     
-    private static Set<String> getUserSchemas(final ShardingSphereUser shardingSphereUser, final Map<ShardingSphereUser, Set<String>> userSchemaMappings) {
-        Set<String> result = new HashSet<>();
-        for (Map.Entry<ShardingSphereUser, Set<String>> entry : userSchemaMappings.entrySet()) {
-            boolean isAnyOtherHost = checkAnyOtherHost(entry.getKey().getGrantee(), shardingSphereUser);
-            if (isAnyOtherHost || shardingSphereUser == entry.getKey() || shardingSphereUser.equals(entry.getKey())) {
-                result.addAll(entry.getValue());
-            }
-        }
-        return result;
-    }
-    
-    private static boolean checkAnyOtherHost(final Grantee grantee, final ShardingSphereUser shardingSphereUser) {
-        return ("%".equalsIgnoreCase(grantee.getHostname())
-                || grantee.getHostname().equals(shardingSphereUser.getGrantee().getHostname()))
-                && grantee.getUsername().equals(shardingSphereUser.getGrantee().getUsername());
-    }
+
 }

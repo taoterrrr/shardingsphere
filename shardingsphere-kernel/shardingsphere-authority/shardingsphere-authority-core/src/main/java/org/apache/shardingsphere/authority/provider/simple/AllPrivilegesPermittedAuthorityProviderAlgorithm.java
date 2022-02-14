@@ -20,14 +20,14 @@ package org.apache.shardingsphere.authority.provider.simple;
 import org.apache.shardingsphere.authority.model.AccessSubject;
 import org.apache.shardingsphere.authority.model.PrivilegeType;
 import org.apache.shardingsphere.authority.model.ShardingSpherePrivileges;
+import org.apache.shardingsphere.authority.provider.simple.builder.AllPrivilegeBuilder;
 import org.apache.shardingsphere.authority.spi.AuthorityProvideAlgorithm;
 import org.apache.shardingsphere.infra.metadata.ShardingSphereMetaData;
 import org.apache.shardingsphere.infra.metadata.user.Grantee;
 import org.apache.shardingsphere.infra.metadata.user.ShardingSphereUser;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * All privileges permitted authority provider algorithm.
@@ -35,18 +35,23 @@ import java.util.Optional;
 public final class AllPrivilegesPermittedAuthorityProviderAlgorithm implements AuthorityProvideAlgorithm {
     
     private static final ShardingSpherePrivileges INSTANCE = new AllPrivilegesPermittedShardingSpherePrivileges();
-    
+
+    private final Collection<Grantee> grantees = new LinkedList<>();
+
     @Override
-    public void init(final Map<String, ShardingSphereMetaData> mataDataMap, final Collection<ShardingSphereUser> users) {
+    public void init(final Collection<Map<String, Object>> permitted, final Map<String,
+                     ShardingSphereMetaData> mataDataMap, final Collection<ShardingSphereUser> users) {
+        this.grantees.addAll(AllPrivilegeBuilder.build(users, permitted));
     }
-    
+
     @Override
     public void refresh(final Map<String, ShardingSphereMetaData> mataDataMap, final Collection<ShardingSphereUser> users) {
     }
     
     @Override
     public Optional<ShardingSpherePrivileges> findPrivileges(final Grantee grantee) {
-        return Optional.of(INSTANCE);
+        return this.grantees.stream().filter(g -> g.equals(grantee)).collect(Collectors.toList()).isEmpty() ?
+                Optional.empty() : Optional.of(INSTANCE);
     }
     
     @Override
@@ -59,19 +64,18 @@ public final class AllPrivilegesPermittedAuthorityProviderAlgorithm implements A
         @Override
         public void setSuperPrivilege() {
         }
-    
+
         @Override
-        public boolean hasPrivileges(final String schema) {
+        public void setPrivileges(AccessSubject accessSubject, Collection<PrivilegeType> privileges) {
+        }
+
+        @Override
+        public boolean hasPrivileges(String schema) {
             return true;
         }
-    
+
         @Override
-        public boolean hasPrivileges(final Collection<PrivilegeType> privileges) {
-            return true;
-        }
-    
-        @Override
-        public boolean hasPrivileges(final AccessSubject accessSubject, final Collection<PrivilegeType> privileges) {
+        public boolean hasPrivileges(String schema, String table, Collection<PrivilegeType> privileges) {
             return true;
         }
     }

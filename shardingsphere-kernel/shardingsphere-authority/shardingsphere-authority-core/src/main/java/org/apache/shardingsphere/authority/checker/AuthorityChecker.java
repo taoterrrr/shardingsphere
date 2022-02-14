@@ -20,13 +20,17 @@ package org.apache.shardingsphere.authority.checker;
 import org.apache.shardingsphere.authority.constant.AuthorityOrder;
 import org.apache.shardingsphere.authority.model.PrivilegeType;
 import org.apache.shardingsphere.authority.model.ShardingSpherePrivileges;
+import org.apache.shardingsphere.authority.provider.schema.model.subject.SchemaAccessSubject;
+import org.apache.shardingsphere.authority.provider.table.model.subject.TableAccessSubject;
 import org.apache.shardingsphere.authority.rule.AuthorityRule;
+import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
 import org.apache.shardingsphere.infra.executor.check.SQLCheckResult;
 import org.apache.shardingsphere.infra.executor.check.SQLChecker;
 import org.apache.shardingsphere.infra.metadata.ShardingSphereMetaData;
 import org.apache.shardingsphere.infra.metadata.user.Grantee;
 import org.apache.shardingsphere.infra.metadata.user.ShardingSphereUser;
 import org.apache.shardingsphere.sql.parser.sql.common.statement.SQLStatement;
+import org.apache.shardingsphere.sql.parser.sql.common.statement.dal.DALStatement;
 import org.apache.shardingsphere.sql.parser.sql.common.statement.ddl.AlterDatabaseStatement;
 import org.apache.shardingsphere.sql.parser.sql.common.statement.ddl.AlterTableStatement;
 import org.apache.shardingsphere.sql.parser.sql.common.statement.ddl.CreateDatabaseStatement;
@@ -41,12 +45,9 @@ import org.apache.shardingsphere.sql.parser.sql.common.statement.dml.DeleteState
 import org.apache.shardingsphere.sql.parser.sql.common.statement.dml.InsertStatement;
 import org.apache.shardingsphere.sql.parser.sql.common.statement.dml.SelectStatement;
 import org.apache.shardingsphere.sql.parser.sql.common.statement.dml.UpdateStatement;
-import org.apache.shardingsphere.sql.parser.sql.dialect.statement.mysql.dal.MySQLShowDatabasesStatement;
+import org.apache.shardingsphere.sql.parser.sql.dialect.statement.mysql.dal.*;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.BiPredicate;
 
 /**
@@ -59,18 +60,47 @@ public final class AuthorityChecker implements SQLChecker<AuthorityRule> {
         if (null == grantee) {
             return true;
         }
-        return authorityRule.findPrivileges(grantee).map(optional -> optional.hasPrivileges(schemaName)).orElse(false);
+        Collection<Optional<ShardingSpherePrivileges>> privileges = authorityRule.findPrivileges(grantee);
+        for (Optional<ShardingSpherePrivileges> optional: privileges) {
+            if (optional.map(o -> o.hasPrivileges(schemaName)).orElse(false)) {
+                return true;
+            }
+        }
+//        return authorityRule.findPrivileges(grantee).map(optional -> optional.hasPrivileges(schemaName)).orElse(false);
+        return false;
     }
     
     @Override
-    public SQLCheckResult check(final SQLStatement sqlStatement, final List<Object> parameters, final Grantee grantee, 
+    public SQLCheckResult check(final SQLStatementContext<?> sqlStatementContext, final List<Object> parameters,
+                                final Grantee grantee,
                                 final String currentSchema, final Map<String, ShardingSphereMetaData> metaDataMap, final AuthorityRule authorityRule) {
         if (null == grantee) {
             return new SQLCheckResult(true, "");
         }
-        Optional<ShardingSpherePrivileges> privileges = authorityRule.findPrivileges(grantee);
-        // TODO add error msg
-        return privileges.map(optional -> new SQLCheckResult(optional.hasPrivileges(Collections.singletonList(getPrivilege(sqlStatement))), "")).orElseGet(() -> new SQLCheckResult(false, ""));
+        PrivilegeType privilegeType = getPrivilege(sqlStatementContext.getSqlStatement());
+        Collection<String> tables = sqlStatementContext.getTablesContext().getTableNames();
+        if (tables.isEmpty() && sqlStatementContext.getSqlStatement() instanceof DALStatement) {
+            return new SQLCheckResult(true, "");
+        }
+        Collection<Optional<ShardingSpherePrivileges>> privileges = authorityRule.findPrivileges(grantee);
+        for (String table : tables) {
+            boolean hasPrivileges = false;
+            for (Optional<ShardingSpherePrivileges> optional: privileges) {
+                if(optional.map(o -> o.hasPrivileges(currentSchema, table, Collections.singletonList(privilegeType))).orElse(false)) {
+                    hasPrivileges = true;
+                    break;
+                }
+            }
+            if (!hasPrivileges) {
+                return new SQLCheckResult(false, String.format("denied to user %s for table %s",
+                        grantee.toString(), table));
+            }
+        }
+
+        return new SQLCheckResult(true, "");
+//        Optional<ShardingSpherePrivileges> privileges = authorityRule.findPrivileges(grantee);
+//        // TODO add error msg
+//        return privileges.map(optional -> new SQLCheckResult(optional.hasPrivileges(Collections.singletonList(getPrivilege(sqlStatement))), "")).orElseGet(() -> new SQLCheckResult(false, ""));
     }
     
     @Override
@@ -85,8 +115,8 @@ public final class AuthorityChecker implements SQLChecker<AuthorityRule> {
     }
     
     private PrivilegeType getPrivilege(final SQLStatement sqlStatement) {
-        if (sqlStatement instanceof MySQLShowDatabasesStatement) {
-            return PrivilegeType.SHOW_DB;
+        if (sqlStatement instanceof DALStatement) {
+            return PrivilegeType.SELECT;
         }
         if (sqlStatement instanceof DMLStatement) {
             return getDMLPrivilege(sqlStatement);

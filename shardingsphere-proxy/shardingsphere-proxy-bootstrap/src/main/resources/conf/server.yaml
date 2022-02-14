@@ -44,16 +44,53 @@
 #      operationTimeoutMilliseconds: 500
 #  overwrite: false
 #
-#rules:
-#  - !AUTHORITY
-#    users:
-#      - root@%:root
-#      - sharding@:sharding
-#    provider:
-#      type: ALL_PRIVILEGES_PERMITTED
-#  - !TRANSACTION
-#    defaultType: XA
-#    providerType: Atomikos
+rules:
+  - !AUTHORITY
+    users:
+      - 'root@%:root'
+      - 'sharding@:sharding'
+      - 'pcloud@%:pcloud'
+      - 'wutao@%:wutao'
+    providers:
+      - type: ALL_PRIVILEGES_PERMITTED
+        permitted:
+          - grantee: root@%
+          - grantee: sharding@
+          - grantee: root@%
+      - type: SCHEMA_PRIVILEGES_PERMITTED
+        permitted:
+          - grantee: root@%
+            schema: sharding_db
+            privileges:
+              - Select
+              - Update
+              - Delete
+              - Insert
+          - grantee: sharding@
+            schema: sharding_db
+            privileges:
+              - Select
+              - Update
+              - Insert
+          - grantee: pcloud@%
+            schema: sharding_db
+            privileges:
+              - Select
+      - type: TABLE_PRIVILEGES_PERMITTED
+        permitted:
+          - grantee: wutao@%
+            schema: sharding_db
+            table: bas_cloud_acc
+            privileges:
+              - Select
+              - Update
+              - Insert
+
+  - !TRANSACTION
+    defaultType: XA
+    providerType: Atomikos
+
+
 #  - !SQL_PARSER
 #    sqlCommentParseEnabled: true
 #    sqlStatementCache:
@@ -65,13 +102,13 @@
 #      maximumSize: 1024
 #      concurrencyLevel: 4
 
-#props:
+props:
 #  max-connections-size-per-query: 1
 #  kernel-executor-size: 16  # Infinite by default.
 #  proxy-frontend-flush-threshold: 128  # The default value is 128.
 #  proxy-opentracing-enabled: false
 #  proxy-hint-enabled: false
-#  sql-show: false
+  sql-show: true
 #  check-table-metadata-enabled: false
 #  show-process-list-enabled: false
 #    # Proxy backend query fetch size. A larger value may increase the memory usage of ShardingSphere Proxy.

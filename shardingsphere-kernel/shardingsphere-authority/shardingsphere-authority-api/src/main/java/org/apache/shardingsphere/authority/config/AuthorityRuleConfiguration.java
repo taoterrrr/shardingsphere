@@ -34,5 +34,5 @@ public final class AuthorityRuleConfiguration implements GlobalRuleConfiguration
     
     private final Collection<ShardingSphereUser> users;
     
-    private final ShardingSphereAlgorithmConfiguration provider;
+    private final Collection<AuthorityProviderAlgorithmConfiguration> providers;
 }

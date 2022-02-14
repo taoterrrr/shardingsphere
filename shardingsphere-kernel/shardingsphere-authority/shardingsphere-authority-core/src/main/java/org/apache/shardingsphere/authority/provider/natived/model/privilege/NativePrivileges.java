@@ -24,8 +24,8 @@ import org.apache.shardingsphere.authority.model.ShardingSpherePrivileges;
 import org.apache.shardingsphere.authority.provider.natived.model.privilege.admin.AdministrativePrivileges;
 import org.apache.shardingsphere.authority.provider.natived.model.privilege.database.DatabasePrivileges;
 import org.apache.shardingsphere.authority.model.AccessSubject;
-import org.apache.shardingsphere.authority.provider.natived.model.subject.SchemaAccessSubject;
-import org.apache.shardingsphere.authority.provider.natived.model.subject.TableAccessSubject;
+import org.apache.shardingsphere.authority.provider.schema.model.subject.SchemaAccessSubject;
+import org.apache.shardingsphere.authority.provider.table.model.subject.TableAccessSubject;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -46,40 +46,69 @@ public final class NativePrivileges implements ShardingSpherePrivileges {
     public void setSuperPrivilege() {
         administrativePrivileges.getPrivileges().add(PrivilegeType.SUPER);
     }
-    
+
+    /**
+     * Set privileges
+     *
+     * @param accessSubject
+     * @param privileges
+     */
     @Override
-    public boolean hasPrivileges(final String schema) {
-        return administrativePrivileges.getPrivileges().contains(PrivilegeType.SUPER)
-                || !databasePrivileges.getGlobalPrivileges().isEmpty() || databasePrivileges.getSpecificPrivileges().containsKey(schema);
-    }
-    
-    @Override
-    public boolean hasPrivileges(final Collection<PrivilegeType> privileges) {
-        return administrativePrivileges.hasPrivileges(filterPrivileges(privileges));
-    }
-    
-    @Override
-    public boolean hasPrivileges(final AccessSubject accessSubject, final Collection<PrivilegeType> privileges) {
-        if (accessSubject instanceof SchemaAccessSubject) {
-            return hasPrivileges(((SchemaAccessSubject) accessSubject).getSchema(), filterPrivileges(privileges));
-        }
-        if (accessSubject instanceof TableAccessSubject) {
-            return hasPrivileges(((TableAccessSubject) accessSubject).getSchema(), ((TableAccessSubject) accessSubject).getTable(), filterPrivileges(privileges));
-        }
-        throw new UnsupportedOperationException(accessSubject.getClass().getCanonicalName());
-    }
-    
-    private boolean hasPrivileges(final String schema, final Collection<PrivilegeType> privileges) {
-        return administrativePrivileges.hasPrivileges(privileges) || databasePrivileges.hasPrivileges(schema, privileges);
-    }
-    
-    private boolean hasPrivileges(final String schema, final String table, final Collection<PrivilegeType> privileges) {
-        return administrativePrivileges.hasPrivileges(privileges) || databasePrivileges.hasPrivileges(schema, table, privileges);
+    public void setPrivileges(AccessSubject accessSubject, Collection<PrivilegeType> privileges) {
+
     }
 
-    private Collection<PrivilegeType> filterPrivileges(final Collection<PrivilegeType> privileges) {
-        return privileges.stream()
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+    /**
+     * Has privileges.
+     *
+     * @param schema
+     * @return
+     */
+    @Override
+    public boolean hasPrivileges(String schema) {
+        return false;
     }
+
+    /**
+     * Has privileges.
+     *
+     * @param schema
+     * @param table
+     * @param privileges
+     * @return
+     */
+    @Override
+    public boolean hasPrivileges(String schema, String table, Collection<PrivilegeType> privileges) {
+        return false;
+    }
+
+//    @Override
+//    public boolean hasPrivileges(AccessSubject accessSubject) {
+//        return false;
+//    }
+//
+//    @Override
+//    public boolean hasPrivileges(final AccessSubject accessSubject, final Collection<PrivilegeType> privileges) {
+//        if (accessSubject instanceof SchemaAccessSubject) {
+//            return hasPrivileges(((SchemaAccessSubject) accessSubject).getSchema(), filterPrivileges(privileges));
+//        }
+//        if (accessSubject instanceof TableAccessSubject) {
+//            return hasPrivileges(((TableAccessSubject) accessSubject).getSchema(), ((TableAccessSubject) accessSubject).getTable(), filterPrivileges(privileges));
+//        }
+//        throw new UnsupportedOperationException(accessSubject.getClass().getCanonicalName());
+//    }
+//
+//    private boolean hasPrivileges(final String schema, final Collection<PrivilegeType> privileges) {
+//        return administrativePrivileges.hasPrivileges(privileges) || databasePrivileges.hasPrivileges(schema, privileges);
+//    }
+//
+//    private boolean hasPrivileges(final String schema, final String table, final Collection<PrivilegeType> privileges) {
+//        return administrativePrivileges.hasPrivileges(privileges) || databasePrivileges.hasPrivileges(schema, table, privileges);
+//    }
+//
+//    private Collection<PrivilegeType> filterPrivileges(final Collection<PrivilegeType> privileges) {
+//        return privileges.stream()
+//                .filter(Objects::nonNull)
+//                .collect(Collectors.toList());
+//    }
 }

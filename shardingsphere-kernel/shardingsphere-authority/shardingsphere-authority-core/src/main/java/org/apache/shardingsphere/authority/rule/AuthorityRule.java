@@ -20,6 +20,7 @@ package org.apache.shardingsphere.authority.rule;
 import org.apache.shardingsphere.authority.config.AuthorityRuleConfiguration;
 import org.apache.shardingsphere.authority.model.ShardingSpherePrivileges;
 import org.apache.shardingsphere.authority.spi.AuthorityProvideAlgorithm;
+import org.apache.shardingsphere.infra.config.algorithm.ShardingSphereAlgorithmConfiguration;
 import org.apache.shardingsphere.infra.config.algorithm.ShardingSphereAlgorithmFactory;
 import org.apache.shardingsphere.infra.metadata.ShardingSphereMetaData;
 import org.apache.shardingsphere.infra.metadata.user.Grantee;
@@ -27,9 +28,11 @@ import org.apache.shardingsphere.infra.metadata.user.ShardingSphereUser;
 import org.apache.shardingsphere.infra.rule.identifier.scope.GlobalRule;
 import org.apache.shardingsphere.spi.ShardingSphereServiceLoader;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Authority rule.
@@ -39,14 +42,19 @@ public final class AuthorityRule implements GlobalRule {
     static {
         ShardingSphereServiceLoader.register(AuthorityProvideAlgorithm.class);
     }
-    
-    private final AuthorityProvideAlgorithm provider;
+
+    private final Collection<AuthorityProvideAlgorithm> providers;
     
     private final Collection<ShardingSphereUser> users;
     
-    public AuthorityRule(final AuthorityRuleConfiguration config, final Map<String, ShardingSphereMetaData> mataDataMap, final Collection<ShardingSphereUser> users) {
-        provider = ShardingSphereAlgorithmFactory.createAlgorithm(config.getProvider(), AuthorityProvideAlgorithm.class);
-        provider.init(mataDataMap, users);
+    public AuthorityRule(final AuthorityRuleConfiguration config,
+                         final Map<String, ShardingSphereMetaData> metaDataMap, final Collection<ShardingSphereUser> users) {
+        this.providers = config.getProviders().stream().map(p -> {
+            AuthorityProvideAlgorithm authorityProvideAlgorithm = ShardingSphereAlgorithmFactory.createAlgorithm(p,
+                    AuthorityProvideAlgorithm.class);
+            authorityProvideAlgorithm.init(p.getPermitted(), metaDataMap, users);
+            return authorityProvideAlgorithm;
+        }).collect(Collectors.toList());
         this.users = users;
     }
     
@@ -56,8 +64,8 @@ public final class AuthorityRule implements GlobalRule {
      * @param grantee grantee
      * @return found privileges
      */
-    public Optional<ShardingSpherePrivileges> findPrivileges(final Grantee grantee) {
-        return provider.findPrivileges(grantee);
+    public Collection<Optional<ShardingSpherePrivileges>> findPrivileges(final Grantee grantee) {
+        return providers.stream().map(provider -> provider.findPrivileges(grantee)).collect(Collectors.toList());
     }
     
     /**
@@ -67,7 +75,7 @@ public final class AuthorityRule implements GlobalRule {
      * @param users users
      */
     public void refresh(final Map<String, ShardingSphereMetaData> mataDataMap, final Collection<ShardingSphereUser> users) {
-        provider.refresh(mataDataMap, users);
+        providers.stream().forEach(provider -> provider.refresh(mataDataMap, users));
     }
 
     /**

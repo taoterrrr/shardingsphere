@@ -41,6 +41,7 @@ import org.apache.shardingsphere.proxy.backend.text.extra.ExtraTextProtocolBacke
 import org.apache.shardingsphere.proxy.backend.text.skip.SkipBackendHandler;
 import org.apache.shardingsphere.proxy.backend.text.transaction.TransactionBackendHandlerFactory;
 import org.apache.shardingsphere.spi.ShardingSphereServiceLoader;
+import org.apache.shardingsphere.sql.parser.sql.common.segment.dal.VariableAssignSegment;
 import org.apache.shardingsphere.sql.parser.sql.common.statement.SQLStatement;
 import org.apache.shardingsphere.sql.parser.sql.common.statement.dal.FlushStatement;
 import org.apache.shardingsphere.sql.parser.sql.common.statement.dcl.DCLStatement;
@@ -49,13 +50,12 @@ import org.apache.shardingsphere.sql.parser.sql.common.statement.ddl.DropDatabas
 import org.apache.shardingsphere.sql.parser.sql.common.statement.dml.EmptyStatement;
 import org.apache.shardingsphere.sql.parser.sql.common.statement.tcl.TCLStatement;
 import org.apache.shardingsphere.sql.parser.sql.common.util.SQLUtil;
-import org.apache.shardingsphere.sql.parser.sql.dialect.statement.mysql.dal.MySQLShowCreateUserStatement;
+import org.apache.shardingsphere.sql.parser.sql.dialect.statement.mysql.dal.*;
+import org.apache.shardingsphere.sql.parser.sql.dialect.statement.mysql.ddl.*;
 
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Text protocol backend handler factory.
@@ -103,7 +103,7 @@ public final class TextProtocolBackendHandlerFactory {
             return extraHandler.get();
         }
         String schemaName = connectionSession.getSchemaName();
-        SQLCheckEngine.check(sqlStatement, Collections.emptyList(), 
+        SQLCheckEngine.check(sqlStatementContext, Collections.emptyList(),
                 getRules(schemaName), schemaName, ProxyContext.getInstance().getContextManager().getMetaDataContexts().getMetaDataMap(), connectionSession.getGrantee());
         if (sqlStatement instanceof TCLStatement) {
             return TransactionBackendHandlerFactory.newInstance((SQLStatementContext<TCLStatement>) sqlStatementContext, sql, connectionSession);
@@ -137,8 +137,26 @@ public final class TextProtocolBackendHandlerFactory {
     }
     
     private static void checkUnsupportedSQLStatement(final SQLStatement sqlStatement) {
-        if (sqlStatement instanceof DCLStatement || sqlStatement instanceof FlushStatement || sqlStatement instanceof MySQLShowCreateUserStatement) {
+        if (sqlStatement instanceof DCLStatement
+                || sqlStatement instanceof FlushStatement
+                || sqlStatement instanceof MySQLShowCreateUserStatement
+                || sqlStatement instanceof MySQLShowBinaryLogsStatement
+                || sqlStatement instanceof MySQLShowBinlogStatement
+                || sqlStatement instanceof MySQLShowEventsStatement
+                || sqlStatement instanceof MySQLCreateFunctionStatement
+                || sqlStatement instanceof MySQLDropFunctionStatement
+                || sqlStatement instanceof MySQLAlterFunctionStatement
+                || sqlStatement instanceof MySQLShowCreateFunctionStatement
+                || sqlStatement instanceof MySQLShowFunctionStatusStatement || sqlStatement instanceof MySQLDropTriggerStatement) {
             throw new UnsupportedOperationException("Unsupported operation");
+        }
+        //不支持set global statement
+        if (sqlStatement instanceof MySQLSetStatement) {
+            List<VariableAssignSegment> variableAssignSegments =
+                    ((MySQLSetStatement) sqlStatement).getVariableAssigns().stream().filter(each -> "GLOBAL".equalsIgnoreCase(each.getVariable().getScope())).collect(Collectors.toList());
+            if (!variableAssignSegments.isEmpty()) {
+                throw new UnsupportedOperationException("Unsupported set global variables");
+            }
         }
     }
 }

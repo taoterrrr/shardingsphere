@@ -35,7 +35,8 @@ public final class YamlAuthorityRuleConfiguration implements YamlRuleConfigurati
 
     private Collection<String> users = new LinkedList<>();
 
-    private YamlShardingSphereAlgorithmConfiguration provider;
+//    private Collection<YamlShardingSphereAlgorithmConfiguration> providers;
+    private Collection<YamlAuthorityProviderAlgorithmConfiguration> providers;
     
     @Override
     public Class<AuthorityRuleConfiguration> getRuleConfigurationType() {

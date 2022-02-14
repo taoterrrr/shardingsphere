@@ -17,6 +17,7 @@
 
 package org.apache.shardingsphere.infra.executor.check;
 
+import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
 import org.apache.shardingsphere.infra.metadata.ShardingSphereMetaData;
 import org.apache.shardingsphere.infra.metadata.user.Grantee;
 import org.apache.shardingsphere.infra.rule.ShardingSphereRule;
@@ -45,7 +46,7 @@ public interface SQLChecker<T extends ShardingSphereRule> extends OrderedSPI<T> 
     /**
      * Check SQL.
      * 
-     * @param sqlStatement SQL statement
+     * @param sqlStatementContext SQL statement context
      * @param parameters SQL parameters
      * @param grantee grantee
      * @param currentSchema current schema
@@ -53,7 +54,9 @@ public interface SQLChecker<T extends ShardingSphereRule> extends OrderedSPI<T> 
      * @param rule rule
      * @return SQL check result
      */
-    SQLCheckResult check(SQLStatement sqlStatement, List<Object> parameters, Grantee grantee, String currentSchema, Map<String, ShardingSphereMetaData> metaDataMap, T rule);
+    SQLCheckResult check(SQLStatementContext<?> sqlStatementContext, List<Object> parameters, Grantee grantee,
+                         String currentSchema,
+                         Map<String, ShardingSphereMetaData> metaDataMap, T rule);
     
     /**
      * Check User.

@@ -31,36 +31,29 @@ import org.apache.shardingsphere.infra.metadata.user.Grantee;
 import org.apache.shardingsphere.infra.metadata.user.ShardingSphereUser;
 
 public final class SchemaPrivilegesPermittedAuthorityProviderAlgorithm implements AuthorityProvideAlgorithm {
-    
-    public static final String PROP_USER_SCHEMA_MAPPINGS = "user-schema-mappings";
 
-    private final Map<ShardingSphereUser, ShardingSpherePrivileges> userPrivilegeMap = new ConcurrentHashMap<>();
-
-    private Properties props;
+    private final Map<Grantee, ShardingSpherePrivileges> userPrivilegeMap = new ConcurrentHashMap<>();
 
     @Override
-    public void setProps(final Properties props) {
-        this.props = props;
-    }
-
-    @Override
-    public Properties getProps() {
-        return this.props;
-    }
-
-    @Override
-    public void init(final Map<String, ShardingSphereMetaData> mataDataMap, final Collection<ShardingSphereUser> users) {
-        this.userPrivilegeMap.putAll(SchemaPrivilegeBuilder.build(users, props));
+    public void init(final Collection<Map<String, Object>> permitted, final Map<String,
+                     ShardingSphereMetaData> mataDataMap, final Collection<ShardingSphereUser> users) {
+        this.userPrivilegeMap.putAll(SchemaPrivilegeBuilder.build(users, permitted));
     }
 
     @Override
     public void refresh(final Map<String, ShardingSphereMetaData> mataDataMap, final Collection<ShardingSphereUser> users) {
-        this.userPrivilegeMap.putAll(SchemaPrivilegeBuilder.build(users, props));
+//        this.userPrivilegeMap.putAll(SchemaPrivilegeBuilder.build(users, props));
     }
 
     @Override
     public Optional<ShardingSpherePrivileges> findPrivileges(final Grantee grantee) {
-        return userPrivilegeMap.keySet().stream().filter(each -> each.getGrantee().equals(grantee)).findFirst().map(userPrivilegeMap::get);
+        return userPrivilegeMap.keySet().stream().filter(each -> each.equals(grantee)).findFirst().map(userPrivilegeMap::get);
+//        for (Grantee key : this.userPrivilegeMap.keySet()) {
+//            if (key.equals(grantee)) {
+//                return Optional.ofNullable(this.userPrivilegeMap.get(key));
+//            }
+//        }
+//        return Optional.empty();
     }
 
     @Override
